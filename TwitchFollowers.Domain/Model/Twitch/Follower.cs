@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace TwitchFollowers.Domain.Model.Tools2807
+namespace TwitchFollowers.Domain.Model.Twitch
 {
     public class Follower
     {
