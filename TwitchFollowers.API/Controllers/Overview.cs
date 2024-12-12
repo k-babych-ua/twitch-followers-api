@@ -1,4 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using TwitchFollowers.Domain.Model.API;
+using TwitchFollowers.Domain.Model.Configuration;
+using TwitchFollowers.Domain.Services;
 
 namespace TwitchFollowers.API.Controllers
 {
@@ -8,19 +12,33 @@ namespace TwitchFollowers.API.Controllers
     {
         private IHttpClientFactory _httpClientFactory;
 
-        public Overview(IHttpClientFactory httpClientFactory)
+        private TwitchService _twitchService;
+
+        public Overview(IHttpClientFactory httpClientFactory, TwitchService twitchService)
         {
             _httpClientFactory = httpClientFactory;
+
+            _twitchService = twitchService;
         }
 
         [HttpGet("{username}")]
         public async Task<ActionResult<string>> Get(string username)
         {
-            using HttpClient client = _httpClientFactory.CreateClient();
+            var userInfo = await _twitchService.GetUserInfo(username);
+            var channelInfo = await _twitchService.GetChannelInfo(userInfo.Data[0].Id);
 
-            var response = await client.GetAsync($"https://tools.2807.eu/api/getfollows/{username}");
+            var response = new OverviewResponse()
+            {
+                UserInfo = userInfo.Data.FirstOrDefault(),
+                ChannelInfo = channelInfo.Data.FirstOrDefault()
+            };
 
-            return await response.Content.ReadAsStringAsync();
+            if (response.ChannelInfo != null)
+            {
+                response.TagsAnalytics = _twitchService.GetTagsAnalytics(response.ChannelInfo);
+            }
+
+            return Ok(response);
         }
     }
 }

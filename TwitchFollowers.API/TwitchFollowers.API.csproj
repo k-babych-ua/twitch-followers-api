@@ -6,4 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TwitchFollowers.Domain\TwitchFollowers.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
