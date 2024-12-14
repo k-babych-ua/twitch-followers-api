@@ -1,3 +1,4 @@
+using Newtonsoft.Json.Linq;
 using TwitchFollowers.Domain.Model.Configuration;
 using TwitchFollowers.Domain.Services;
 
@@ -24,7 +25,12 @@ builder.Services
     .AddOptions<TagsConfig>()
     .Configure<IConfiguration>((settings, config) =>
     {
-        config.GetSection("TagsConfig").Bind(settings);
+        var tagsSection = config.GetSection("TagsConfig");
+        if (tagsSection != null)
+        {
+            settings.Green = tagsSection.GetSection("Green")?.Value?.Split(",");
+            settings.Red = tagsSection.GetSection("Red")?.Value?.Split(",");
+        }
     });
 
 builder.Services.AddControllers();
