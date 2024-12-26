@@ -1,8 +1,21 @@
-using Newtonsoft.Json.Linq;
 using TwitchFollowers.Domain.Model.Configuration;
 using TwitchFollowers.Domain.Services;
 
+const string _originPolicy = "myAllowPolicy";
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        _originPolicy,
+        policy =>
+        {
+            policy
+                .WithOrigins("https://www.twitch.tv")
+                .WithMethods("POST");
+        });
+});
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<TwitchService>();
@@ -37,6 +50,7 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+app.UseCors(_originPolicy);
 app.MapControllers();
 
 app.Run();
