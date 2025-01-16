@@ -64,8 +64,8 @@ namespace TwitchFollowers.Domain.Services
             return new TagsAnalytics()
             {
                 TotalTags = channel.Tags.Count(),
-                GreenTags = channel.Tags.Count(x => _tagsConfig.Green.Contains(x)),
-                RedTags = channel.Tags.Count(x => _tagsConfig.Red.Contains(x))
+                GreenTags = channel.Tags.Count(x => _tagsConfig.Green.Any(y => string.Compare(x, y, StringComparison.InvariantCultureIgnoreCase) == 0)),
+                RedTags = channel.Tags.Count(x => _tagsConfig.Red.Any(y => string.Compare(x, y, StringComparison.InvariantCultureIgnoreCase) == 0))
             };
         }
 
