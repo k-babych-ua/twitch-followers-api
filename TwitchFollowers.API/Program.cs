@@ -19,6 +19,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<TwitchService>();
+builder.Services.AddScoped<FollowingService>();
 
 builder.Services
     .AddOptions<Urls>()
