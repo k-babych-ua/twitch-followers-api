@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using TwitchFollowers.Domain.Model.API;
-using TwitchFollowers.Domain.Model.Configuration;
 using TwitchFollowers.Domain.Services;
 
 namespace TwitchFollowers.API.Controllers
@@ -10,15 +8,18 @@ namespace TwitchFollowers.API.Controllers
     [ApiController]
     public class Overview : ControllerBase
     {
-        private IHttpClientFactory _httpClientFactory;
-
         private TwitchService _twitchService;
+        private FollowingService _followingService;
 
-        public Overview(IHttpClientFactory httpClientFactory, TwitchService twitchService)
+        private ParallelOptions _parallelOptions = new ParallelOptions()
         {
-            _httpClientFactory = httpClientFactory;
+            MaxDegreeOfParallelism = 4
+        };
 
+        public Overview(IHttpClientFactory httpClientFactory, TwitchService twitchService, FollowingService followingService)
+        {
             _twitchService = twitchService;
+            _followingService = followingService;
         }
 
         [HttpGet("{username}")]
@@ -36,6 +37,22 @@ namespace TwitchFollowers.API.Controllers
             if (response.ChannelInfo != null)
             {
                 response.TagsAnalytics = _twitchService.GetTagsAnalytics(response.ChannelInfo);
+
+                var follows = await _followingService.GetUserFollowings(username);
+
+                response.FollowingAnalytics.TotalFollowings = follows.Count();
+
+                List<TagsAnalytics> channelTagAnalytics = new List<TagsAnalytics>();
+
+                await Parallel.ForEachAsync(follows, _parallelOptions, async (follow, ct) =>
+                {
+                    var followChannelInfo = await _twitchService.GetChannelInfo(follow.Id);
+                    channelTagAnalytics.Add(_twitchService.GetTagsAnalytics(followChannelInfo.Data.FirstOrDefault()));
+                });
+
+                response.FollowingAnalytics.RedFollowings = channelTagAnalytics.Count(x => x.RedTags > 0 && x.GreenTags <= 0);
+                response.FollowingAnalytics.GreenFollowings = channelTagAnalytics.Count(x => x.GreenTags > 0 && x.RedTags <= 0);
+                response.FollowingAnalytics.Mixed = channelTagAnalytics.Count(x => x.GreenTags > 0 && x.RedTags > 0);
             }
 
             return Ok(response);
