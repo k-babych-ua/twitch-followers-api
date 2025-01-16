@@ -10,11 +10,14 @@ namespace TwitchFollowers.Domain.Model.API
 
         public TagsAnalytics TagsAnalytics { get; set; }
 
+        public FollowingAnalytics FollowingAnalytics { get; set; }
+
         public OverviewResponse()
         {
             UserInfo = new UserData();
             ChannelInfo = new ChannelData();
             TagsAnalytics = new TagsAnalytics();
+            FollowingAnalytics = new FollowingAnalytics();
         }
     }
 
@@ -39,5 +42,16 @@ namespace TwitchFollowers.Domain.Model.API
             GreenTags = greenTags;
             RedTags = redTags;
         }
+    }
+
+    public class FollowingAnalytics
+    {
+        public int TotalFollowings { get; set; }
+
+        public int GreenFollowings { get; set; }
+
+        public int RedFollowings { get; set; }
+
+        public int Mixed { get; set; }
     }
 }
