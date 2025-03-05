@@ -18,14 +18,30 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<TwitchService>();
-builder.Services.AddScoped<FollowingService>();
+builder.Services.AddMemoryCache();
+
+builder.Services.AddSingleton<TwitchService>();
+builder.Services.AddSingleton<FollowingService>();
 
 builder.Services
     .AddOptions<Urls>()
     .Configure<IConfiguration>((settings, config) =>
     {
         config.GetSection("Urls").Bind(settings);
+    });
+
+builder.Services
+    .AddOptions<AppConfig>()
+    .Configure<IConfiguration>((settings, config) =>
+    {
+        var appConfigSection = config.GetSection("AppConfig");
+        if (appConfigSection != null)
+        {
+            settings.MaxDegreeOfParallelism = appConfigSection.GetValue<int>("MaxDegreeOfParallelism");
+            settings.CacheAbsoluteExpirationInMinutes = appConfigSection.GetValue<int>("CacheAbsoluteExpirationInMinutes");
+
+            settings.CacheChannels = appConfigSection.GetSection("CacheChannels")?.Value?.Split(",");
+        }
     });
 
 builder.Services
@@ -48,6 +64,8 @@ builder.Services
     });
 
 builder.Services.AddControllers();
+
+builder.Services.AddHostedService<StartupCaching>();
 
 var app = builder.Build();
 
