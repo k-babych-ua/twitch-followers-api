@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 using TwitchFollowers.Domain.Extensions;
 using TwitchFollowers.Domain.Model.API;
 using TwitchFollowers.Domain.Model.Configuration;
@@ -8,6 +11,8 @@ namespace TwitchFollowers.Domain.Services
 {
     public class TwitchService
     {
+        private readonly IMemoryCache _cache;
+
         private IHttpClientFactory _httpClientFactory;
 
         private Token _token = null;
@@ -16,17 +21,21 @@ namespace TwitchFollowers.Domain.Services
         private Urls _urls;
         private Twitch _twitchOptions;
         private TagsConfig _tagsConfig;
+        private AppConfig _appConfig;
 
-        public TwitchService(IHttpClientFactory httpClientFactory, 
+        public TwitchService(IHttpClientFactory httpClientFactory, IMemoryCache cache,
             IOptions<Urls> urlOptions, 
             IOptions<Twitch> twitchOptions, 
-            IOptions<TagsConfig> tagsConfig)
+            IOptions<TagsConfig> tagsConfig,
+            IOptions<AppConfig> appConfig)
         {
+            _cache = cache; 
             _httpClientFactory = httpClientFactory;
 
             _urls = urlOptions.Value;
             _twitchOptions = twitchOptions.Value;
             _tagsConfig = tagsConfig.Value;
+            _appConfig = appConfig.Value;
         }
 
         public async Task<User> GetUserInfo(string username)
@@ -59,14 +68,57 @@ namespace TwitchFollowers.Domain.Services
             return await response.Content.ReadAsJsonAsync<Channel>();
         }
 
+        public async Task<Channel> GetChannelInfoCached(string broadcasterid)
+        {
+            if (_cache.TryGetValue(broadcasterid, out Channel data))
+            {
+                return data;
+            }
+            
+            data = await GetChannelInfo(broadcasterid);
+
+            if (data != null)
+            {
+                var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(_appConfig.CacheAbsoluteExpirationInMinutes));
+
+                _cache.Set(broadcasterid, data, cacheOptions);
+            }
+
+            return data;
+        }
+
         public TagsAnalytics GetTagsAnalytics(ChannelData channel)
         {
-            return new TagsAnalytics()
+            if (channel != null && channel.Tags.Any())
             {
-                TotalTags = channel.Tags.Count(),
-                GreenTags = channel.Tags.Count(x => _tagsConfig.Green.Any(y => string.Compare(x, y, StringComparison.InvariantCultureIgnoreCase) == 0)),
-                RedTags = channel.Tags.Count(x => _tagsConfig.Red.Any(y => string.Compare(x, y, StringComparison.InvariantCultureIgnoreCase) == 0))
-            };
+                return new TagsAnalytics()
+                {
+                    TotalTags = channel.Tags.Count(),
+                    GreenTags = channel.Tags.Count(x => _tagsConfig.Green.Any(y => string.Compare(x, y, StringComparison.InvariantCultureIgnoreCase) == 0)),
+                    RedTags = channel.Tags.Count(x => _tagsConfig.Red.Any(y => string.Compare(x, y, StringComparison.InvariantCultureIgnoreCase) == 0))
+                };
+            }
+
+            return new TagsAnalytics(0, 0, 0);
+        }
+
+        public TagsAnalytics GetTagsAnalyticsCached(ChannelData channel)
+        {
+            string key = $"{channel.Id}-ta";
+            if (_cache.TryGetValue(key, out TagsAnalytics data))
+            {
+                return data;
+            }
+
+            data = GetTagsAnalytics(channel);
+
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(_appConfig.CacheAbsoluteExpirationInMinutes));
+
+            _cache.Set(key, data, cacheOptions);
+
+            return data;
         }
 
         private async Task AcquireToken()
