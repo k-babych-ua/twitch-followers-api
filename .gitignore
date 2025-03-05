@@ -398,3 +398,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 /TwitchFollowers.API/appsettings.Development.json
+/TwitchFollowers.API/Properties/ServiceDependencies/twitch-followers-api - Web Deploy/profile.arm.json
