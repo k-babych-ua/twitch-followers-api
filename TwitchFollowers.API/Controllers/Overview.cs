@@ -61,24 +61,6 @@ namespace TwitchFollowers.API.Controllers
             if (response.ChannelInfo != null)
             {
                 response.TagsAnalytics = _twitchService.GetTagsAnalyticsCached(response.ChannelInfo);
-
-                var follows = await _followingService.GetUserFollowings(username);
-
-                List<TagsAnalytics> channelTagAnalytics = new List<TagsAnalytics>();
-                await Parallel.ForEachAsync(follows, _parallelOptions, async (follow, ct) =>
-                {
-                    var followChannelInfo = await _twitchService.GetChannelInfoCached(follow.Id);
-
-                    if (followChannelInfo?.Data?.FirstOrDefault() is ChannelData data)
-                    {
-                        channelTagAnalytics.Add(_twitchService.GetTagsAnalyticsCached(data));
-                    }
-                });
-
-                response.FollowingAnalytics.TotalFollowings = follows.Count();
-                response.FollowingAnalytics.RedFollowings = channelTagAnalytics.Count(x => x.RedTags > 0 && x.GreenTags <= 0);
-                response.FollowingAnalytics.GreenFollowings = channelTagAnalytics.Count(x => x.GreenTags > 0 && x.RedTags <= 0);
-                response.FollowingAnalytics.Mixed = channelTagAnalytics.Count(x => x.GreenTags > 0 && x.RedTags > 0);
             }
 
             return Ok(response);
